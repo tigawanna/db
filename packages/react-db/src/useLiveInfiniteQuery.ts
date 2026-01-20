@@ -1,14 +1,14 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { CollectionImpl } from '@tanstack/db'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLiveQuery } from './useLiveQuery'
 import type {
-  Collection,
-  Context,
-  InferResultType,
-  InitialQueryBuilder,
-  LiveQueryCollectionUtils,
-  NonSingleResult,
-  QueryBuilder,
+    Collection,
+    Context,
+    InferResultType,
+    InitialQueryBuilder,
+    LiveQueryCollectionUtils,
+    NonSingleResult,
+    QueryBuilder,
 } from '@tanstack/db'
 
 /**
@@ -20,7 +20,7 @@ function isLiveQueryCollectionUtils(
   return typeof (utils as any).setWindow === `function`
 }
 
-export type UseLiveInfiniteQueryConfig<TContext extends Context> = {
+export type UseLiveInfiniteQueryConfig<TContext extends Context, TMeta = unknown> = {
   pageSize?: number
   initialPageParam?: number
   getNextPageParam: (
@@ -29,6 +29,23 @@ export type UseLiveInfiniteQueryConfig<TContext extends Context> = {
     lastPageParam: number,
     allPageParams: Array<number>,
   ) => number | undefined
+  /**
+   * Custom metadata to pass to the collection's queryFn.
+   * This is accessible in queryFn via `ctx.meta`.
+   *
+   * @example
+   * ```typescript
+   * const { data, fetchNextPage } = useLiveInfiniteQuery(
+   *   (q) => q.from({ posts: postsCollection }).orderBy(({ posts }) => posts.createdAt, 'desc'),
+   *   {
+   *     pageSize: 20,
+   *     meta: { category: 'tech' },
+   *     getNextPageParam: (lastPage) => lastPage.length === 20 ? lastPage.length : undefined
+   *   }
+   * )
+   * ```
+   */
+  meta?: TMeta
 }
 
 export type UseLiveInfiniteQueryReturn<TContext extends Context> = Omit<
@@ -188,6 +205,8 @@ export function useLiveInfiniteQuery<TContext extends Context>(
     ? useLiveQuery(queryFnOrCollection)
     : useLiveQuery(
         (q) => queryFnOrCollection(q).limit(pageSize).offset(0),
+        // Pass meta from config to useLiveQuery options
+        config.meta !== undefined ? { meta: config.meta } : {},
         deps,
       )
 

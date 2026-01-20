@@ -1,9 +1,9 @@
-import { useRef, useSyncExternalStore } from 'react'
 import {
   BaseQueryBuilder,
   CollectionImpl,
   createLiveQueryCollection,
 } from '@tanstack/db'
+import { useRef, useSyncExternalStore } from 'react'
 import type {
   Collection,
   CollectionConfigSingleRowOption,
@@ -21,6 +21,32 @@ import type {
 const DEFAULT_GC_TIME_MS = 1 // Live queries created by useLiveQuery are cleaned up immediately (0 disables GC)
 
 export type UseLiveQueryStatus = CollectionStatus | `disabled`
+
+/**
+ * Options for useLiveQuery when using the query function pattern
+ */
+export interface UseLiveQueryOptions<TMeta = unknown> {
+  /**
+   * Custom metadata to pass to the collection's queryFn.
+   * This is accessible in queryFn via `ctx.meta`.
+   *
+   * @example
+   * ```typescript
+   * const { data } = useLiveQuery(
+   *   (q) => q.from({ todos: todosCollection }),
+   *   { meta: { showCompleted: true, category: 'work' } },
+   *   [deps]
+   * )
+   *
+   * // In queryCollectionOptions:
+   * queryFn: async (ctx) => {
+   *   const { showCompleted, category } = ctx.meta ?? {}
+   *   return api.getTodos({ showCompleted, category })
+   * }
+   * ```
+   */
+  meta?: TMeta
+}
 
 /**
  * Create a live query using a query function
@@ -79,10 +105,36 @@ export type UseLiveQueryStatus = CollectionStatus | `disabled`
  *     {data.map(todo => <li key={todo.id}>{todo.text}</li>)}
  *   </ul>
  * )
+ *
+ * @example
+ * // With meta options for passing context to queryFn
+ * const { data } = useLiveQuery(
+ *   (q) => q.from({ todos: todosCollection }),
+ *   { meta: { showCompleted: true, category: 'work' } },
+ *   [deps]
+ * )
  */
 // Overload 1: Accept query function that always returns QueryBuilder
 export function useLiveQuery<TContext extends Context>(
   queryFn: (q: InitialQueryBuilder) => QueryBuilder<TContext>,
+  deps?: Array<unknown>,
+): {
+  state: Map<string | number, GetResult<TContext>>
+  data: InferResultType<TContext>
+  collection: Collection<GetResult<TContext>, string | number, {}>
+  status: CollectionStatus // Can't be disabled if always returns QueryBuilder
+  isLoading: boolean
+  isReady: boolean
+  isIdle: boolean
+  isError: boolean
+  isCleanedUp: boolean
+  isEnabled: true // Always true if always returns QueryBuilder
+}
+
+// Overload 1b: Accept query function with options (meta)
+export function useLiveQuery<TContext extends Context, TMeta = unknown>(
+  queryFn: (q: InitialQueryBuilder) => QueryBuilder<TContext>,
+  options: UseLiveQueryOptions<TMeta>,
   deps?: Array<unknown>,
 ): {
   state: Map<string | number, GetResult<TContext>>
@@ -315,8 +367,25 @@ export function useLiveQuery<
 // Implementation - use function overloads to infer the actual collection type
 export function useLiveQuery(
   configOrQueryOrCollection: any,
-  deps: Array<unknown> = [],
+  depsOrOptions?: Array<unknown> | UseLiveQueryOptions,
+  maybeDeps?: Array<unknown>,
 ) {
+  // Determine if second argument is options or deps
+  const isOptionsObject =
+    depsOrOptions !== undefined &&
+    !Array.isArray(depsOrOptions) &&
+    typeof depsOrOptions === `object`
+
+  // Extract options and deps from arguments
+  const options: UseLiveQueryOptions | undefined = isOptionsObject
+    ? depsOrOptions
+    : undefined
+  const deps: Array<unknown> = isOptionsObject
+    ? (maybeDeps ?? [])
+    : Array.isArray(depsOrOptions)
+      ? depsOrOptions
+      : []
+
   // Check if it's already a collection by checking for specific collection methods
   const isCollection =
     configOrQueryOrCollection &&
@@ -331,6 +400,7 @@ export function useLiveQuery(
   )
   const depsRef = useRef<Array<unknown> | null>(null)
   const configRef = useRef<unknown>(null)
+  const optionsRef = useRef<UseLiveQueryOptions | undefined>(undefined)
 
   // Use refs to track version and memoized snapshot
   const versionRef = useRef(0)
@@ -339,6 +409,12 @@ export function useLiveQuery(
     version: number
   } | null>(null)
 
+  // Serialize options.meta for comparison (shallow compare won't work for objects)
+  const optionsMeta = options?.meta
+  const prevOptionsMeta = optionsRef.current?.meta
+  const metaChanged =
+    JSON.stringify(optionsMeta) !== JSON.stringify(prevOptionsMeta)
+
   // Check if we need to create/recreate the collection
   const needsNewCollection =
     !collectionRef.current ||
@@ -346,7 +422,8 @@ export function useLiveQuery(
     (!isCollection &&
       (depsRef.current === null ||
         depsRef.current.length !== deps.length ||
-        depsRef.current.some((dep, i) => dep !== deps[i])))
+        depsRef.current.some((dep, i) => dep !== deps[i]) ||
+        metaChanged))
 
   if (needsNewCollection) {
     if (isCollection) {
@@ -390,6 +467,8 @@ export function useLiveQuery(
             query: configOrQueryOrCollection,
             startSync: true,
             gcTime: DEFAULT_GC_TIME_MS,
+            // Pass meta from options to the live query collection
+            meta: options?.meta,
           })
         } else if (result && typeof result === `object`) {
           // Assume it's a LiveQueryCollectionConfig
@@ -397,6 +476,8 @@ export function useLiveQuery(
             startSync: true,
             gcTime: DEFAULT_GC_TIME_MS,
             ...result,
+            // Options meta takes precedence over config meta
+            ...(options?.meta !== undefined && { meta: options.meta }),
           })
         } else {
           // Unexpected return type
@@ -405,6 +486,7 @@ export function useLiveQuery(
           )
         }
         depsRef.current = [...deps]
+        optionsRef.current = options
       } else {
         // Original logic for config objects
         collectionRef.current = createLiveQueryCollection({
@@ -413,6 +495,7 @@ export function useLiveQuery(
           ...configOrQueryOrCollection,
         })
         depsRef.current = [...deps]
+        optionsRef.current = options
       }
     }
   }

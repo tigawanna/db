@@ -1,5 +1,5 @@
-import { QueryObserver, hashKey } from '@tanstack/query-core'
 import { deepEquals } from '@tanstack/db'
+import { QueryObserver, hashKey } from '@tanstack/query-core'
 import {
   GetKeyRequiredError,
   QueryClientRequiredError,
@@ -8,6 +8,14 @@ import {
 } from './errors'
 import { createWriteUtils } from './manual-sync'
 import { serializeLoadSubsetOptions } from './serialization'
+import type {
+  FetchStatus,
+  QueryClient,
+  QueryFunctionContext,
+  QueryKey,
+  QueryObserverOptions,
+  QueryObserverResult,
+} from '@tanstack/query-core'
 import type {
   BaseCollectionConfig,
   ChangeMessage,
@@ -19,14 +27,6 @@ import type {
   UpdateMutationFnParams,
   UtilsRecord,
 } from '@tanstack/db'
-import type {
-  FetchStatus,
-  QueryClient,
-  QueryFunctionContext,
-  QueryKey,
-  QueryObserverOptions,
-  QueryObserverResult,
-} from '@tanstack/query-core'
 import type { StandardSchemaV1 } from '@standard-schema/spec'
 
 // Re-export for external use
@@ -668,7 +668,12 @@ export function queryCollectionOptions(
       // Generate key using common function
       const key = generateQueryKeyFromOptions(opts)
       const hashedQueryKey = hashKey(key)
-      const extendedMeta = { ...meta, loadSubsetOptions: opts }
+      // Merge collection-level meta with query-time meta from LoadSubsetOptions
+      // Query-time meta (opts.meta) takes precedence and appears at the top level
+      // loadSubsetOptions is also available for accessing predicates, limit, offset, etc.
+      const optsMeta =
+        opts.meta && typeof opts.meta === 'object' ? opts.meta : {}
+      const extendedMeta = { ...meta, ...optsMeta, loadSubsetOptions: opts }
 
       if (state.observers.has(hashedQueryKey)) {
         // We already have a query for this queryKey

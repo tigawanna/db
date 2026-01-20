@@ -5,15 +5,15 @@ import {
 } from '../compiler/expressions.js'
 import type { MultiSetArray, RootStreamBuilder } from '@tanstack/db-ivm'
 import type { Collection } from '../../collection/index.js'
+import type { CollectionSubscription } from '../../collection/subscription.js'
 import type {
   ChangeMessage,
   SubscriptionStatusChangeEvent,
 } from '../../types.js'
 import type { Context, GetResult } from '../builder/types.js'
-import type { BasicExpression } from '../ir.js'
 import type { OrderByOptimizationInfo } from '../compiler/order-by.js'
+import type { BasicExpression } from '../ir.js'
 import type { CollectionConfigBuilder } from './collection-config-builder.js'
-import type { CollectionSubscription } from '../../collection/subscription.js'
 
 const loadMoreCallbackSymbol = Symbol.for(
   `@tanstack/db.collection-config-builder`,
@@ -204,6 +204,8 @@ export class CollectionSubscriber<
       ...(includeInitialState && { includeInitialState }),
       whereExpression,
       onStatusChange,
+      // Pass meta from the live query config to the sync layer
+      meta: this.collectionConfigBuilder.meta,
     })
 
     return subscription
@@ -235,6 +237,8 @@ export class CollectionSubscriber<
     const subscription = this.collection.subscribeChanges(sendChangesInRange, {
       whereExpression,
       onStatusChange,
+      // Pass meta from the live query config to the sync layer
+      meta: this.collectionConfigBuilder.meta,
     })
     subscriptionHolder.current = subscription
 

@@ -1,15 +1,13 @@
+import { EventEmitter } from '../event-emitter.js'
 import { ensureIndexForExpression } from '../indexes/auto-index.js'
 import { and, eq, gte, lt } from '../query/builder/functions.js'
-import { PropRef, Value } from '../query/ir.js'
-import { EventEmitter } from '../event-emitter.js'
 import { compileExpression } from '../query/compiler/evaluators.js'
+import { PropRef, Value } from '../query/ir.js'
 import { buildCursor } from '../utils/cursor.js'
 import {
   createFilterFunctionFromExpression,
   createFilteredCallback,
 } from './change-events.js'
-import type { BasicExpression, OrderBy } from '../query/ir.js'
-import type { IndexInterface } from '../indexes/base-index.js'
 import type {
   ChangeMessage,
   LoadSubsetOptions,
@@ -18,6 +16,8 @@ import type {
   SubscriptionStatus,
   SubscriptionUnsubscribedEvent,
 } from '../types.js'
+import type { BasicExpression, OrderBy } from '../query/ir.js'
+import type { IndexInterface } from '../indexes/base-index.js'
 import type { CollectionImpl } from './index.js'
 
 type RequestSnapshotOptions = {
@@ -45,6 +45,11 @@ type CollectionSubscriptionOptions = {
   whereExpression?: BasicExpression<boolean>
   /** Callback to call when the subscription is unsubscribed */
   onUnsubscribe?: (event: SubscriptionUnsubscribedEvent) => void
+  /**
+   * Custom metadata to pass to loadSubset calls.
+   * This is passed from the live query to the collection's sync layer.
+   */
+  meta?: unknown
 }
 
 export class CollectionSubscription
@@ -362,6 +367,8 @@ export class CollectionSubscription
       // Include orderBy and limit if provided so sync layer can optimize the query
       orderBy: opts?.orderBy,
       limit: opts?.limit,
+      // Include meta if provided to pass to sync layer (e.g., for queryFn)
+      meta: this.options.meta,
     }
     const syncResult = this.collection._sync.loadSubset(loadOptions)
 
@@ -591,6 +598,8 @@ export class CollectionSubscription
       cursor: cursorExpressions, // Cursor expressions passed separately
       offset: offset ?? currentOffset, // Use provided offset, or auto-tracked offset
       subscription: this,
+      // Include meta if provided to pass to sync layer (e.g., for queryFn)
+      meta: this.options.meta,
     }
     const syncResult = this.collection._sync.loadSubset(loadOptions)
 

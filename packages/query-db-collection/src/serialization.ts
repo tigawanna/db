@@ -2,7 +2,7 @@ import type { IR, LoadSubsetOptions } from '@tanstack/db'
 
 /**
  * Serializes LoadSubsetOptions into a stable, hashable format for query keys.
- * Includes where, orderBy, limit, and offset for pagination support.
+ * Includes where, orderBy, limit, offset, and meta for pagination and query-time context support.
  * Note: cursor expressions are not serialized as they are backend-specific.
  * @internal
  */
@@ -48,6 +48,12 @@ export function serializeLoadSubsetOptions(
   // Include offset for pagination support
   if (options.offset !== undefined) {
     result.offset = options.offset
+  }
+
+  // Include meta for query-time context (e.g., filters passed from useLiveQuery)
+  // This ensures different meta values create different cache entries
+  if (options.meta !== undefined) {
+    result.meta = serializeValue(options.meta)
   }
 
   return Object.keys(result).length === 0 ? undefined : JSON.stringify(result)

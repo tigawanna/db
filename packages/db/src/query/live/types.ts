@@ -55,6 +55,7 @@ export type FullSyncState = Required<Omit<SyncState, `flushPendingChanges`>> &
 export interface LiveQueryCollectionConfig<
   TContext extends Context,
   TResult extends object = GetResult<TContext> & object,
+  TMeta = unknown,
 > {
   /**
    * Unique identifier for the collection
@@ -107,4 +108,25 @@ export interface LiveQueryCollectionConfig<
    * If provided, these will be used instead of inheriting from the FROM collection.
    */
   defaultStringCollation?: StringCollationConfig
+
+  /**
+   * Custom metadata to pass to collection queryFn via LoadSubsetOptions.
+   * This allows passing arbitrary context data from the query site to the sync layer.
+   *
+   * @example
+   * ```typescript
+   * // In useLiveQuery with config object
+   * const { data } = useLiveQuery({
+   *   query: (q) => q.from({ todos: todosCollection }).where(...),
+   *   meta: { showCompleted: true, category: 'work' }
+   * })
+   *
+   * // In queryFn
+   * queryFn: async (ctx) => {
+   *   const { showCompleted, category } = ctx.meta ?? {}
+   *   return api.getTodos({ showCompleted, category })
+   * }
+   * ```
+   */
+  meta?: TMeta
 }

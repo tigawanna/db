@@ -1,10 +1,10 @@
+import type { StandardSchemaV1 } from '@standard-schema/spec'
 import type { IStreamBuilder } from '@tanstack/db-ivm'
 import type { Collection } from './collection/index.js'
-import type { StandardSchemaV1 } from '@standard-schema/spec'
-import type { Transaction } from './transactions'
-import type { BasicExpression, OrderBy } from './query/ir.js'
 import type { EventEmitter } from './event-emitter.js'
 import type { SingleRowRefProxy } from './query/builder/ref-proxy.js'
+import type { BasicExpression, OrderBy } from './query/ir.js'
+import type { Transaction } from './transactions'
 
 /**
  * Interface for a collection-like object that provides the necessary methods
@@ -282,7 +282,7 @@ export type CursorExpressions = {
   lastKey?: string | number
 }
 
-export type LoadSubsetOptions = {
+export type LoadSubsetOptions<TMeta = unknown> = {
   /** The where expression to filter the data (does NOT include cursor expressions) */
   where?: BasicExpression<boolean>
   /** The order by clause to sort the data */
@@ -309,6 +309,24 @@ export type LoadSubsetOptions = {
    * @optional Available when called from CollectionSubscription, may be undefined for direct calls
    */
   subscription?: Subscription
+  /**
+   * Custom metadata passed from query hooks (useLiveQuery, useLiveInfiniteQuery).
+   * This allows passing arbitrary context data from the query site to the collection's queryFn.
+   *
+   * @example
+   * // In useLiveQuery
+   * const { data } = useLiveQuery(
+   *   (q) => q.from({ todos: todosCollection }).where(...),
+   *   { meta: { showCompleted: true, category: 'work' } }
+   * )
+   *
+   * // In queryFn
+   * queryFn: async (ctx) => {
+   *   const { showCompleted, category } = ctx.meta ?? {}
+   *   return api.getTodos({ showCompleted, category })
+   * }
+   */
+  meta?: TMeta
 }
 
 export type LoadSubsetFn = (options: LoadSubsetOptions) => true | Promise<void>
@@ -809,6 +827,18 @@ export interface SubscribeChangesOptions<
    * @internal
    */
   onStatusChange?: (event: SubscriptionStatusChangeEvent) => void
+  /**
+   * Custom metadata to pass to loadSubset calls.
+   * This is passed from the live query to the collection's sync layer (e.g., queryFn).
+   *
+   * @example
+   * ```ts
+   * collection.subscribeChanges(callback, {
+   *   meta: { showCompleted: true, category: 'work' }
+   * })
+   * ```
+   */
+  meta?: unknown
 }
 
 export interface SubscribeChangesSnapshotOptions<

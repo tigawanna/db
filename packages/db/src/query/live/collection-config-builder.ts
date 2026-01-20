@@ -1,22 +1,20 @@
 import { D2, output } from '@tanstack/db-ivm'
-import { compileQuery } from '../compiler/index.js'
-import { buildQuery, getQueryIR } from '../builder/index.js'
 import {
   MissingAliasInputsError,
   SetWindowRequiresOrderByError,
 } from '../../errors.js'
 import { transactionScopedScheduler } from '../../scheduler.js'
 import { getActiveTransaction } from '../../transactions.js'
-import { CollectionSubscriber } from './collection-subscriber.js'
+import { buildQuery, getQueryIR } from '../builder/index.js'
+import { compileQuery } from '../compiler/index.js'
 import { getCollectionBuilder } from './collection-registry.js'
+import { CollectionSubscriber } from './collection-subscriber.js'
 import { LIVE_QUERY_INTERNAL } from './internal.js'
-import type { LiveQueryInternalUtils } from './internal.js'
-import type { WindowOptions } from '../compiler/index.js'
-import type { SchedulerContextId } from '../../scheduler.js'
-import type { CollectionSubscription } from '../../collection/subscription.js'
 import type { RootStreamBuilder } from '@tanstack/db-ivm'
-import type { OrderByOptimizationInfo } from '../compiler/order-by.js'
+import type { AllCollectionEvents } from '../../collection/events.js'
 import type { Collection } from '../../collection/index.js'
+import type { CollectionSubscription } from '../../collection/subscription.js'
+import type { SchedulerContextId } from '../../scheduler.js'
 import type {
   CollectionConfigSingleRowOption,
   KeyedStream,
@@ -26,15 +24,17 @@ import type {
   UtilsRecord,
 } from '../../types.js'
 import type { Context, GetResult } from '../builder/types.js'
-import type { BasicExpression, QueryIR } from '../ir.js'
+import type { WindowOptions } from '../compiler/index.js'
 import type { LazyCollectionCallbacks } from '../compiler/joins.js'
+import type { OrderByOptimizationInfo } from '../compiler/order-by.js'
+import type { BasicExpression, QueryIR } from '../ir.js'
+import type { LiveQueryInternalUtils } from './internal.js'
 import type {
   Changes,
   FullSyncState,
   LiveQueryCollectionConfig,
   SyncState,
 } from './types.js'
-import type { AllCollectionEvents } from '../../collection/events.js'
 
 export type LiveQueryCollectionUtils = UtilsRecord & {
   getRunCount: () => number
@@ -144,6 +144,14 @@ export class CollectionConfigBuilder<
   readonly lazySources = new Set<string>()
   // Set of collection IDs that include an optimizable ORDER BY clause
   optimizableOrderByCollections: Record<string, OrderByOptimizationInfo> = {}
+
+  /**
+   * Get the meta data from the config.
+   * This is used by CollectionSubscriber to pass meta to loadSubset calls.
+   */
+  get meta(): unknown {
+    return this.config.meta
+  }
 
   constructor(
     private readonly config: LiveQueryCollectionConfig<TContext, TResult>,

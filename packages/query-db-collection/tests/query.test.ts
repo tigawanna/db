@@ -1,22 +1,22 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { QueryClient } from '@tanstack/query-core'
 import {
-  createCollection,
-  createLiveQueryCollection,
-  eq,
-  ilike,
-  or,
+    createCollection,
+    createLiveQueryCollection,
+    eq,
+    ilike,
+    or,
 } from '@tanstack/db'
+import { QueryClient } from '@tanstack/query-core'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { queryCollectionOptions } from '../src/query'
+import type { QueryCollectionConfig, QueryCollectionUtils } from '../src/query'
 import type { QueryFunctionContext } from '@tanstack/query-core'
 import type {
-  Collection,
-  DeleteMutationFnParams,
-  InsertMutationFnParams,
-  TransactionWithMutations,
-  UpdateMutationFnParams,
+    Collection,
+    DeleteMutationFnParams,
+    InsertMutationFnParams,
+    TransactionWithMutations,
+    UpdateMutationFnParams,
 } from '@tanstack/db'
-import type { QueryCollectionConfig, QueryCollectionUtils } from '../src/query'
 
 interface TestItem {
   id: string
@@ -565,6 +565,127 @@ describe(`QueryCollection`, () => {
                 name: `ilike`,
               }),
             }),
+          }),
+        }),
+      )
+    })
+
+    it(`should pass meta from createLiveQueryCollection to queryFn`, async () => {
+      const queryFn = vi
+        .fn()
+        .mockImplementation((ctx: QueryFunctionContext<any>) => {
+          // Verify that custom meta from createLiveQueryCollection is accessible
+          expect(ctx.meta?.customField).toBe(`custom-value`)
+          expect(ctx.meta?.requestId).toBe(12345)
+          // Verify loadSubsetOptions is still available alongside custom meta
+          expect(ctx.meta?.loadSubsetOptions).toBeDefined()
+          return Promise.resolve([])
+        })
+
+      const config: QueryCollectionConfig<TestItem> = {
+        id: `liveQueryMetaTest`,
+        queryClient,
+        queryKey: [`liveQueryMetaTest`],
+        queryFn,
+        getKey,
+        syncMode: `on-demand`,
+      }
+
+      const options = queryCollectionOptions(config)
+      const collection = createCollection(options)
+
+      // Create a live query with custom meta
+      const liveQuery = createLiveQueryCollection({
+        query: (q) =>
+          q
+            .from({ item: collection })
+            .where(({ item }) => eq(item.id, `1`))
+            .select(({ item }) => ({ id: item.id, name: item.name })),
+        meta: {
+          customField: `custom-value`,
+          requestId: 12345,
+        },
+      })
+
+      await liveQuery.preload()
+
+      // Wait for queryFn to be called
+      await vi.waitFor(() => {
+        expect(queryFn).toHaveBeenCalled()
+      })
+
+      // Verify queryFn was called with custom meta alongside loadSubsetOptions
+      expect(queryFn).toHaveBeenCalledWith(
+        expect.objectContaining({
+          meta: expect.objectContaining({
+            customField: `custom-value`,
+            requestId: 12345,
+            loadSubsetOptions: expect.objectContaining({
+              where: expect.objectContaining({
+                type: `func`,
+                name: `eq`,
+              }),
+            }),
+          }),
+        }),
+      )
+    })
+
+    it(`should merge collection-level meta with liveQuery meta`, async () => {
+      const queryFn = vi
+        .fn()
+        .mockImplementation((ctx: QueryFunctionContext<any>) => {
+          // Collection-level meta should be present
+          expect(ctx.meta?.collectionField).toBe(`collection-value`)
+          // LiveQuery meta should override collection meta for same key
+          expect(ctx.meta?.sharedField).toBe(`livequery-value`)
+          // LiveQuery-specific meta should be present
+          expect(ctx.meta?.liveQueryField).toBe(`livequery-only`)
+          return Promise.resolve([])
+        })
+
+      const config: QueryCollectionConfig<TestItem> = {
+        id: `mergeMetaTest`,
+        queryClient,
+        queryKey: [`mergeMetaTest`],
+        queryFn,
+        getKey,
+        syncMode: `on-demand`,
+        meta: {
+          collectionField: `collection-value`,
+          sharedField: `collection-value`, // This should be overridden
+        },
+      }
+
+      const options = queryCollectionOptions(config)
+      const collection = createCollection(options)
+
+      // Create a live query with meta that should merge/override collection meta
+      const liveQuery = createLiveQueryCollection({
+        query: (q) =>
+          q
+            .from({ item: collection })
+            .select(({ item }) => ({ id: item.id, name: item.name })),
+        meta: {
+          sharedField: `livequery-value`, // Overrides collection meta
+          liveQueryField: `livequery-only`,
+        },
+      })
+
+      await liveQuery.preload()
+
+      // Wait for queryFn to be called
+      await vi.waitFor(() => {
+        expect(queryFn).toHaveBeenCalled()
+      })
+
+      // Verify the merged meta
+      expect(queryFn).toHaveBeenCalledWith(
+        expect.objectContaining({
+          meta: expect.objectContaining({
+            collectionField: `collection-value`,
+            sharedField: `livequery-value`,
+            liveQueryField: `livequery-only`,
           }),
         }),
       )

@@ -10,7 +10,17 @@
   "pnpm": {
     "overrides": {
       "metro": "0.82.5"
-    }
+    },
+    "onlyBuiltDependencies": [
+      "@firebase/util",
+      "@parcel/watcher",
+      "esbuild",
+      "lmdb",
+      "msgpackr-extract",
+      "protobufjs",
+      "rxdb",
+      "unrs-resolver"
+    ]
   },
   "scripts": {
     "build": "pnpm --filter \"./packages/**\" build",
