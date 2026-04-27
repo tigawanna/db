@@ -50,6 +50,10 @@ export function serializeLoadSubsetOptions(
     result.offset = options.offset
   }
 
+  if (options.optionsMeta && Object.keys(options.optionsMeta).length > 0) {
+    result.optionsMeta = options.optionsMeta
+  }
+
   return Object.keys(result).length === 0 ? undefined : JSON.stringify(result)
 }
 

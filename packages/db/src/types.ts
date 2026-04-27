@@ -3,6 +3,7 @@ import type { Collection } from './collection/index.js'
 import type { StandardSchemaV1 } from '@standard-schema/spec'
 import type { Transaction } from './transactions'
 import type { BasicExpression, OrderBy } from './query/ir.js'
+import type { LiveQueryOptionsMeta } from './query/live/global.js'
 import type { EventEmitter } from './event-emitter.js'
 import type { IndexConstructor } from './indexes/base-index.js'
 import type { SingleRowRefProxy } from './query/builder/ref-proxy.js'
@@ -311,6 +312,15 @@ export type LoadSubsetOptions = {
    * @optional Available when called from CollectionSubscription, may be undefined for direct calls
    */
   subscription?: Subscription
+  /**
+   * Custom metadata passed from useLiveQuery / useLiveInfiniteQuery hooks.
+   * Sync layers (e.g. query collection's queryFn) can use this for
+   * server-side filtering, auth context, or any hook-specific data.
+   *
+   * Extend the `LiveQueryOptionsMeta` interface via module augmentation
+   * to add type-safe custom properties.
+   */
+  optionsMeta?: LiveQueryOptionsMeta
 }
 
 export type LoadSubsetFn = (options: LoadSubsetOptions) => true | Promise<void>
@@ -864,6 +874,11 @@ export interface SubscribeChangesOptions<
    * @internal
    */
   onLoadSubsetResult?: (result: Promise<void> | true) => void
+  /**
+   * Custom metadata from live query hooks, forwarded to every loadSubset call.
+   * @internal
+   */
+  optionsMeta?: LiveQueryOptionsMeta
 }
 
 export interface SubscribeChangesSnapshotOptions<

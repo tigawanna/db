@@ -4,6 +4,7 @@ import type {
   ResultStream,
   StringCollationConfig,
 } from '../../types.js'
+import type { LiveQueryOptionsMeta } from './global.js'
 import type { InitialQueryBuilder, QueryBuilder } from '../builder/index.js'
 import type {
   Context,
@@ -113,4 +114,10 @@ export interface LiveQueryCollectionConfig<
    * If provided, these will be used instead of inheriting from the FROM collection.
    */
   defaultStringCollation?: StringCollationConfig
+
+  /**
+   * Custom metadata that flows from the hook down to source collection sync layers.
+   * Extend the `LiveQueryOptionsMeta` interface via module augmentation for type safety.
+   */
+  optionsMeta?: LiveQueryOptionsMeta
 }

@@ -49,6 +49,7 @@ import type {
   LiveQueryCollectionConfig,
   SyncState,
 } from './types.js'
+import type { LiveQueryOptionsMeta } from './global.js'
 import type { AllCollectionEvents } from '../../collection/events.js'
 
 export type LiveQueryCollectionUtils = UtilsRecord & {
@@ -88,6 +89,7 @@ export class CollectionConfigBuilder<
   readonly query: QueryIR
   private readonly collections: Record<string, Collection<any, any, any>>
   private readonly collectionByAlias: Record<string, Collection<any, any, any>>
+  readonly optionsMeta: LiveQueryOptionsMeta | undefined
   // Populated during compilation with all aliases (including subquery inner aliases)
   private compiledAliasToCollectionId: Record<string, string> = {}
 
@@ -166,6 +168,7 @@ export class CollectionConfigBuilder<
   ) {
     // Generate a unique ID if not provided
     this.id = config.id || `live-query-${++liveQueryCollectionCounter}`
+    this.optionsMeta = config.optionsMeta
 
     this.query = buildQueryFromConfig({
       query: config.query,

@@ -7,6 +7,7 @@ import type {
   InferResultType,
   InitialQueryBuilder,
   LiveQueryCollectionUtils,
+  LiveQueryOptionsMeta,
   NonSingleResult,
   QueryBuilder,
 } from '@tanstack/db'
@@ -23,6 +24,11 @@ function isLiveQueryCollectionUtils(
 export type UseLiveInfiniteQueryConfig<TContext extends Context> = {
   pageSize?: number
   initialPageParam?: number
+  /**
+   * Custom metadata that flows from the hook down to source collection sync layers.
+   * Extend the `LiveQueryOptionsMeta` interface via module augmentation for type safety.
+   */
+  optionsMeta?: LiveQueryOptionsMeta
   /**
    * @deprecated This callback is not used by the current implementation.
    * Pagination is determined internally via a peek-ahead strategy.
@@ -201,10 +207,13 @@ export function useLiveInfiniteQuery<TContext extends Context>(
   const queryResult = isCollection
     ? useLiveQuery(queryFnOrCollection)
     : useLiveQuery(
-        (q) =>
-          queryFnOrCollection(q)
-            .limit(pageSize + 1)
-            .offset(0),
+        {
+          query: (q: InitialQueryBuilder) =>
+            queryFnOrCollection(q)
+              .limit(pageSize + 1)
+              .offset(0),
+          optionsMeta: config.optionsMeta,
+        },
         deps,
       )
 

@@ -18,6 +18,7 @@ import type {
   SubscriptionStatus,
   SubscriptionUnsubscribedEvent,
 } from '../types.js'
+import type { LiveQueryOptionsMeta } from '../query/live/global.js'
 import type { CollectionImpl } from './index.js'
 
 type RequestSnapshotOptions = {
@@ -51,6 +52,8 @@ type CollectionSubscriptionOptions = {
   whereExpression?: BasicExpression<boolean>
   /** Callback to call when the subscription is unsubscribed */
   onUnsubscribe?: (event: SubscriptionUnsubscribedEvent) => void
+  /** Custom metadata from live query hooks, included in every loadSubset call */
+  optionsMeta?: LiveQueryOptionsMeta
 }
 
 export class CollectionSubscription
@@ -375,6 +378,7 @@ export class CollectionSubscription
       // Include orderBy and limit if provided so sync layer can optimize the query
       orderBy: opts?.orderBy,
       limit: opts?.limit,
+      optionsMeta: this.options.optionsMeta,
     }
     const syncResult = this.collection._sync.loadSubset(loadOptions)
 
@@ -613,6 +617,7 @@ export class CollectionSubscription
       cursor: cursorExpressions, // Cursor expressions passed separately
       offset: offset ?? currentOffset, // Use provided offset, or auto-tracked offset
       subscription: this,
+      optionsMeta: this.options.optionsMeta,
     }
     const syncResult = this.collection._sync.loadSubset(loadOptions)
 

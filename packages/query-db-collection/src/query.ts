@@ -1084,7 +1084,7 @@ export function queryCollectionOptions(
       // Generate key using common function
       const key = generateQueryKeyFromOptions(opts)
       const hashedQueryKey = hashKey(key)
-      const extendedMeta = { ...meta, loadSubsetOptions: opts }
+      const extendedMeta = { ...meta, ...opts.optionsMeta, loadSubsetOptions: opts }
       const retainedEntry = metadata?.collection.get(
         `${QUERY_COLLECTION_GC_PREFIX}${hashedQueryKey}`,
       )

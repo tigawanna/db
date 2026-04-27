@@ -219,6 +219,7 @@ export class CollectionSubscriber<
       orderBy: hints.orderBy,
       limit: hints.limit,
       onLoadSubsetResult,
+      optionsMeta: this.collectionConfigBuilder.optionsMeta,
     })
 
     return subscription
@@ -272,6 +273,7 @@ export class CollectionSubscriber<
     const subscription = this.collection.subscribeChanges(sendChangesInRange, {
       whereExpression,
       onStatusChange,
+      optionsMeta: this.collectionConfigBuilder.optionsMeta,
     })
     subscriptionHolder.current = subscription
 

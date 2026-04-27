@@ -86,6 +86,7 @@ export { queryOnce, type QueryOnceConfig } from './query-once.js'
 
 export { type LiveQueryCollectionConfig } from './live/types.js'
 export { type LiveQueryCollectionUtils } from './live/collection-config-builder.js'
+export { type LiveQueryOptionsMeta } from './live/global.js'
 
 // Predicate utilities for predicate push-down
 export {
